@@ -15,6 +15,8 @@ class Ros:
         self.is_connected = False
         self.topic_dict ={}  # dictionary with topic name as key and topic object as value
         self.connect(host, port)
+        # set caption
+        pygame.display.set_caption('Create3 Robot Simulation')
 
     def connect(self, host, port):
         if not ( host and port ):
@@ -69,6 +71,12 @@ if __name__ == '__main__':
     # make cmd_vel topic
     robot_name = 'juliet'
     cmd_vel_topic = Topic(ros, f'{robot_name}/cmd_vel', 'geometry_msgs/Twist')
+
+    # make odom topic
+    odom_topic = Topic(ros, f'{robot_name}/odom', 'nav_msgs/Odometry')
+
+    # make a subscriber
+    odom_topic.subscribe(lambda msg: print(f'Odometry message received: {msg}'))
 
     # publish a message to the topic
     cmd_vel_topic.publish({'linear': {'x': 0.1}, 'angular': {'z': 0.01}})

@@ -21,8 +21,10 @@ class Create3(pygame.sprite.Sprite):
         self.y = screen.get_rect().centery
         self.v = 0 # linear velocity in m/s
         self.ros = ros_instance
-        self.cmd_vel_topic = Topic(ros_instance, f'{name}/cmd_vel', 'geometry_msgs/Twist')
         self.velocity_multiplier = 5
+        # make topics needed
+        self.cmd_vel_topic = Topic(ros_instance, f'{name}/cmd_vel', 'geometry_msgs/Twist')
+        self.odom_topic = Topic(ros_instance, f'{name}/odom', 'nav_msgs/Odometry')
 
     def update(self):
         # check for \cmd_vel topic
@@ -44,6 +46,16 @@ class Create3(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.rect.center)
 
         # publish the odometry topic
+        self.publish_odom()
 
-
-
+    def publish_odom(self):
+        self.odom_topic.publish({
+            'pose': {
+                'position': {'x': self.x, 'y': self.y, 'z': 0},
+                'orientation': {'x' : 0, 'y': 0, 'z': sin(self.theta/2), 'w': cos(self.theta/2)}
+            },
+            'twist': {
+                'linear': {'x': self.v, 'y': 0, 'z': 0},
+                'angular': {'x': 0, 'y': 0, 'z': self.theta_dot}
+            }
+        })

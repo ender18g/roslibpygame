@@ -26,4 +26,4 @@ class Topic:
 
     def subscribe(self, callback):
         # add the callback to the topic
-        self.callback = callback
+        self.callbacks.append(callback)
