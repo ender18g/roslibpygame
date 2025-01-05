@@ -4,10 +4,10 @@ Pygame simulator to operate a create3 similar to roslibpy
 ![alt text](assets/screenshots/1.png)
 
 ## TODO List
-- [ ] Make Topic Class
-- [ ] subscribe to topic
-- [ ] publish to topic
-- [ ] Make robot move
+- [x] Make Topic Class
+- [x] subscribe to topic
+- [x] publish to topic
+- [x] Make robot move
 
 Sample python code:
 ```python
