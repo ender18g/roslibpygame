@@ -9,8 +9,15 @@ class Create3(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         print(f'Creating robot {name}')
         self.image = pygame.image.load('./assets/images/create3.png')
+        self.image = self.image.convert_alpha()
+
+        # rotate the image
+        self.image = pygame.transform.rotate(self.image, -90)
         # zoom out the image
-        self.image = pygame.transform.rotozoom(self.image, -90, 0.2)
+        self.image = pygame.transform.smoothscale_by(self.image, 0.2)
+        
+        self.make_image()
+
         self.og_image = self.image
         self.rect = self.image.get_rect()
         self.rect.center = screen.get_rect().center
@@ -25,6 +32,34 @@ class Create3(pygame.sprite.Sprite):
         # make topics needed
         self.cmd_vel_topic = Topic(ros_instance, f'{name}/cmd_vel', 'geometry_msgs/Twist')
         self.odom_topic = Topic(ros_instance, f'{name}/odom', 'nav_msgs/Odometry')
+
+    def make_image(self):
+        # Draw the robot with a large circle
+        w = 1000
+        h = 1000
+        
+        # Create a transparent surface
+        self.image = pygame.Surface((w, h), pygame.SRCALPHA)
+        
+        # draw wheelbase
+        wheel_width = 200
+        pygame.draw.rect(self.image, (0, 0, 0), (0, h // 2 - wheel_width // 2, w, wheel_width))
+        # Draw circles with anti-aliasing in mind
+        pygame.draw.circle(self.image, (0, 0, 0), (w // 2, h // 2), w // 2)
+        pygame.draw.circle(self.image, (200, 200, 200), (w // 2, h // 2), w // 2 - 40)
+
+        # put white oval at the top
+        pygame.draw.ellipse(self.image, (255, 255, 255), (w // 2 - 100, h // 2 - 300, 200, 80))
+
+        self.image = pygame.transform.rotate(self.image, -90)
+        # Reduce the size of the image with smooth scaling
+        scale = 0.1
+        scaled_size = (int(w * scale), int(h * scale))
+        self.image = pygame.transform.smoothscale(self.image, scaled_size)
+
+
+
+
 
     def update(self):
         # check for \cmd_vel topic
@@ -46,7 +81,7 @@ class Create3(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.rect.center)
 
         # publish the odometry topic
-        self.publish_odom()
+        #self.publish_odom()
 
     def publish_odom(self):
         self.odom_topic.publish({
