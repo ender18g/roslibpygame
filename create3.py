@@ -16,10 +16,12 @@ class Create3(pygame.sprite.Sprite):
         # zoom out the image
         self.image = pygame.transform.smoothscale_by(self.image, 0.2)
         
-        self.make_image()
+        #self.make_image()
 
         self.og_image = self.image
         self.rect = self.image.get_rect()
+        self.robot_width = self.rect.width
+
         self.rect.center = screen.get_rect().center
         self.screen = screen
         self.theta = 0 # angle in radians
@@ -57,8 +59,17 @@ class Create3(pygame.sprite.Sprite):
         scaled_size = (int(w * scale), int(h * scale))
         self.image = pygame.transform.smoothscale(self.image, scaled_size)
 
+    def check_wall(self,point):
+        # checks to see if point has r value less than 200, if so, return True
+        point = (int(point[0]), int(point[1]))
 
+        # point is an xy pixel coordinate
+        rgb_val = self.ros.background.get_at(point)
 
+        if rgb_val[0] < 200:
+            return True
+        
+        return False
 
 
     def update(self):
@@ -69,9 +80,30 @@ class Create3(pygame.sprite.Sprite):
             self.theta_dot = self.cmd_vel_topic.msg['angular']['z']
 
         # move the robot
-        self.x += self.v * cos(self.theta) * self.velocity_multiplier
-        self.y -= self.v * sin(self.theta) * self.velocity_multiplier
-        self.theta += self.theta_dot
+        new_x = self.x + self.v * cos(self.theta) * self.velocity_multiplier
+        new_y = self.y - self.v * sin(self.theta) * self.velocity_multiplier
+        new_theta = self.theta + self.theta_dot
+
+        # check for collision
+        # get the four corners of the robot
+        corners = [
+            (new_x - self.robot_width//2, new_y - self.robot_width//2),
+            (new_x + self.robot_width//2, new_y - self.robot_width//2),
+            (new_x + self.robot_width//2, new_y + self.robot_width//2),
+            (new_x - self.robot_width//2, new_y + self.robot_width//2)
+        ]
+
+        # check if any of the corners are in a wall
+        corner_bools = [self.check_wall(corner) for corner in corners]
+        if any(corner_bools):
+            # if there is a collision, don't move
+            return
+        
+        # update the position and angle
+        self.x = new_x
+        self.y = new_y
+        self.theta = new_theta
+        
 
         # update the rect
         self.rect.center = (self.x, self.y)
@@ -81,7 +113,7 @@ class Create3(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.rect.center)
 
         # publish the odometry topic
-        #self.publish_odom()
+        self.publish_odom()
 
     def publish_odom(self):
         self.odom_topic.publish({

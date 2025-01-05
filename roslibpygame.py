@@ -2,6 +2,7 @@
 import pygame
 from create3 import Create3
 import threading
+import random
 
 from topic import Topic
 
@@ -15,6 +16,13 @@ class Ros:
         self.is_connected = False
         self.topic_dict ={}  # dictionary with topic name as key and topic object as value
         self.connect(host, port)
+        self.colors = [
+            (13, 27,42),
+            (27, 38, 59),
+            (65, 90, 119),
+            (119, 141, 169),
+            (224, 225, 221)
+        ]
         self.background = self.create_background()
         # set caption
         pygame.display.set_caption('Create3 Robot Simulation')
@@ -43,20 +51,32 @@ class Ros:
     def create_background(self):
         W = self.screen.get_width()
         H = self.screen.get_height()
-        offset = 100
+        offset = 300
+        wall_width = 40
+        floor_color = self.colors[4]
+        wall_color = self.colors[2]
         # returns background that is size of screen
         background = pygame.Surface(self.screen.get_size())
-        # fill with white
-        background.fill((255, 255, 255))
-        gray_tile = pygame.Surface((20, 20))
-        gray_tile.fill((100, 100, 100))
-        # draw gray tiles at
-        for x in range(0, self.screen.get_width(), 20):
-            for y in range(0, self.screen.get_height(), 20):
-                if x == offset or y == offset or x == W - offset or y == H - offset:
-                    background.blit(gray_tile, (x, y))
+        background.fill(floor_color)
         
+        # now make inside offset grey
+        wall_rect = background.get_rect().inflate(-offset, -offset)
+        background.fill(wall_color, wall_rect)
+
+        yard_rect = wall_rect.inflate(-wall_width, -wall_width) 
+        background.fill(floor_color, yard_rect)
+
+        # put an opening on top/bottom wall
+        door_width = 200
+        doors_rect = pygame.rect.Rect(0,0, door_width, H)
+        doors_rect.center = background.get_rect().center
+        background.fill(floor_color, doors_rect)
+
+
         return background
+
+
+    
 
     def run_forever(self):
         # Non-blocking loop to run game continuously!
@@ -68,6 +88,7 @@ class Ros:
             # Draw all robots
             self.screen.blit(self.create_background(), (0, 0))
 
+
             # Update all robots
             self.robots.update()
             self.robots.draw(self.screen)
@@ -75,9 +96,17 @@ class Ros:
             # put fps in top left corner
             fps = self.clock.get_fps()
             font = pygame.font.Font(None, 24)
-            text = font.render(f'FPS: {fps:.2f}', True, (0, 0, 0))
-            self.screen.blit(text, (0, 0))
+            text = font.render(f'FPS: {fps:.2f}', True, self.colors[1])
+            self.screen.blit(text, (10, 10))
 
+            # if 'p' pressed, take a screenshot
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_p]:
+                pygame.image.save(self.screen, f'assets/screenshots/{random.randint(0, 1000)}.png')
+                # sleep for 1 second to prevent multiple screenshots
+                pygame.time.wait(1000)
+
+            
             self.clock.tick(60)
             pygame.display.flip()
 
@@ -100,11 +129,14 @@ if __name__ == '__main__':
     # make odom topic
     odom_topic = Topic(ros, f'{robot_name}/odom', 'nav_msgs/Odometry')
 
+    def odom_callback(msg):
+        print(f'Odometry message received: {msg}')
+
     # make a subscriber
-    #odom_topic.subscribe(lambda msg: print(f'Odometry message received: {msg}'))
+    odom_topic.subscribe(lambda msg: odom_callback(msg))
 
     # publish a message to the topic
-    cmd_vel_topic.publish({'linear': {'x': 0.1}, 'angular': {'z': 0.01}})
+    cmd_vel_topic.publish({'linear': {'x': 0.1}, 'angular': {'z': 0.00}})
 
     # start the main loop - run_forever is blocking
     ros.run_forever()
