@@ -9,10 +9,6 @@ pygame.init()
 screen = pygame.display.set_mode((400, 300))
 pygame.display.set_caption("Control Create3 Robot")
 
-# ROS WebSocket connection details
-ros_host = 'ws://127.0.0.1:9090'
-ros_node_name = 'create3_teleop'
-
 # Connect to ROS
 ros_node = roslibpy.Ros(host='127.0.0.1', port=9090)
 ros_node.run()
@@ -32,12 +28,14 @@ velocities = {
 
 
 # Function to handle the IR intensity messages
-def ir_intensity_callback(message):
-    # Print the IR intensity data to the console
-    print('new msg')
+def odom_callback(message):
+    print(f'Odometry message received: {message}')
 
-# Create a subscriber to the /juliet/ir_intensity topic
-ir_intensity_sub = roslibpy.Topic(ros_node, '/juliet/imu', 'sensor_msgs/Imu')
+# Create a subscriber to the /juliet/odom topic
+odom_sub = roslibpy.Topic(ros_node, '/juliet/odom', 'nav_msgs/Odometry')
+
+# Subscribe to the /juliet/odom topic
+odom_sub.subscribe(odom_callback)
 
 # Main loopd
 running = True
