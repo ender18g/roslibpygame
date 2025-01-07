@@ -62,7 +62,7 @@ class Create3(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.rect.center)
 
         # Publish odometry
-        #self.publish_odom()
+        self.publish_odom()
 
     def check_wall(self, point):
         point = (int(point[0]), int(point[1]))
@@ -70,16 +70,28 @@ class Create3(pygame.sprite.Sprite):
         return rgb_val[0] < 200  # Check for a "wall"
 
     def publish_odom(self):
-        self.odom_topic.publish({
-            'pose': {
-                'position': {'x': self.x, 'y': self.y, 'z': 0},
-                'orientation': {'x': 0, 'y': 0, 'z': sin(self.theta/2), 'w': cos(self.theta/2)}
-            },
-            'twist': {
-                'linear': {'x': self.v, 'y': 0, 'z': 0},
-                'angular': {'x': 0, 'y': 0, 'z': self.theta_dot}
+        msg = {
+                'pose': {
+                    'position': {'x': self.x, 'y': self.y, 'z': 0},
+                    'orientation': {'x': 0, 'y': 0, 'z': sin(self.theta/2), 'w': cos(self.theta/2)}
+                },
+                'twist': {
+                    'linear': {'x': self.v, 'y': 0, 'z': 0},
+                    'angular': {'x': 0, 'y': 0, 'z': self.theta_dot}
+                }
             }
-        })
+        
+        if self.ros.broadcast_payload:
+            self.ros.broadcast_payload({
+                    'op': 'publish',
+                    'topic': f'{self.ros.robot_name}/odom',
+                    'msg': msg
+                })
+        else:
+            print('No broadcast payload callback set!')
+        
+       
+
 
 class Topic:
     def __new__(cls, ros_instance, topic_name, message_type):
@@ -102,10 +114,6 @@ class Topic:
 
     def publish(self, message):
         self.msg = message
-        # msg is set, now we can call the callback functions
-        if self.callbacks:
-            [callback(self.msg) for callback in self.callbacks]
-
 
     def subscribe(self, callback):
         # add the callback to the topic
@@ -115,8 +123,15 @@ class WebSocketProtocol(WebSocketServerProtocol):
     def __init__(self, ros_instance):
         super().__init__()
         self.ros = ros_instance
+
+        self.robot_name = ros_instance.robot_name
+
         # create topic for /juliet/cmd_vel
-        self.cmd_vel_topic = Topic(ros_instance, 'juliet/cmd_vel', 'geometry_msgs/Twist')
+        self.cmd_vel_topic = Topic(ros_instance, f'{self.robot_name}/cmd_vel', 'geometry_msgs/Twist')
+
+        # create a callback for sending messages to the network
+        self.ros.broadcast_payload = lambda payload: self.sendMessage(json.dumps(payload).encode('utf8'))
+        
 
     def onMessage(self, payload, isBinary):
         if not isBinary:
@@ -126,23 +141,6 @@ class WebSocketProtocol(WebSocketServerProtocol):
                     self.cmd_vel_topic.publish(message.get('msg'))
             except:
                 print("Invalid JSON received")
-
-    def send_odometry_message(self):
-        odometry_message = {
-            "op": "publish",
-            "topic": "/juliet/odom",
-            "msg": {
-                "pose": {
-                    "position": {"x": self.robot.x, "y": self.robot.y, "z": 0.0},
-                    "orientation": {"x": 0.0, "y": 0.0, "z": sin(self.robot.theta/2), "w": cos(self.robot.theta/2)}
-                },
-                "twist": {
-                    "linear": {"x": self.robot.v, "y": 0.0, "z": 0.0},
-                    "angular": {"x": 0.0, "y": 0.0, "z": self.robot.theta_dot}
-                }
-            }
-        }
-        self.sendMessage(json.dumps(odometry_message).encode('utf8'))
 
 class RosSimulator:
     def __init__(self, robot_name, host = None, port = None):
@@ -166,17 +164,15 @@ class RosSimulator:
 
         self.is_connected = True
         # main player robot
+        self.robot_name = robot_name
         self.main_robot = Create3(self.screen, self, robot_name)
         self.robots.add(self.main_robot)
 
-
-    def broadcast(self, topic_name, message):
-        for topic in self.topics:
-            if topic.topic_name == topic_name:
-                topic.publish(message)
+        self.broadcast_payload = None # callback to send messages to the network
 
     def add_topic(self, topic):
         self.topic_dict[topic.topic_name] = topic
+     
 
     def create_background(self):
         W = self.screen.get_width()
