@@ -32,7 +32,7 @@ def odom_callback(message):
     print(f'Odometry message received: {message}')
 
 # Create a subscriber to the /juliet/odom topic
-odom_sub = roslibpy.Topic(ros_node, 'juliet/odom', 'nav_msgs/Odometry')
+odom_sub = roslibpy.Topic(ros_node, '/juliet/odom', 'nav_msgs/Odometry')
 
 # Subscribe to the /juliet/odom topic
 odom_sub.subscribe(odom_callback)

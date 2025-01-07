@@ -16,18 +16,23 @@ class Create3(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(self.image, -90)
         self.image = pygame.transform.smoothscale(self.image, (self.image.get_width() // 5, self.image.get_height() // 5))
 
+        self.radius = self.image.get_width() // 2 # radius of robot in pixels
+        self.radius_points = []
+        for i in range(0, 360, 30):
+            self.radius_points.append((self.radius * cos(i), self.radius * sin(i)))
+
         self.og_image = self.image
         self.rect = self.image.get_rect(center=screen.get_rect().center)
         self.robot_width = self.rect.width
         self.screen = screen
 
         # Robot state
+        self.pixel_per_meter = 200
         self.theta = 0
         self.theta_dot = 0
-        self.x = self.rect.centerx # this should be in meters
-        self.y = self.rect.centery # this should be in meters
+        self.x, self.y = (0,0)
+        self.rect.center = self.get_pixel_position()
         self.v = 0                 # linear velocity in m/s 
-        self.pixel_per_meter = 200
 
         # timing variables
         self.fps = 60
@@ -35,8 +40,8 @@ class Create3(pygame.sprite.Sprite):
 
         # ROS topics
         self.ros = ros_instance
-        self.cmd_vel_topic = Topic(ros_instance, f'{name}/cmd_vel', 'geometry_msgs/Twist')
-        self.odom_topic = Topic(ros_instance, f'{name}/odom', 'nav_msgs/Odometry')
+        self.cmd_vel_topic = Topic(ros_instance, f'/{name}/cmd_vel', 'geometry_msgs/Twist')
+        self.odom_topic = Topic(ros_instance, f'/{name}/odom', 'nav_msgs/Odometry')
 
 
     def update(self):
@@ -46,23 +51,41 @@ class Create3(pygame.sprite.Sprite):
             self.v = self.cmd_vel_topic.msg['linear']['x']
             self.theta_dot = self.cmd_vel_topic.msg['angular']['z']
 
-        # Calculate new position with TIME_STEP
-        new_x = self.x + self.v * cos(self.theta) * self.dt  * self.pixel_per_meter
-        new_y = self.y - self.v * sin(self.theta) * self.dt * self.pixel_per_meter
-        new_theta = self.theta + self.theta_dot * self.dt
+        # Calculate new position in METERS with TIME_STEP
+        new_x = self.x + self.v * cos(self.theta) * self.dt 
+        new_y = self.y + self.v * sin(self.theta) * self.dt
+        self.theta = self.theta + self.theta_dot * self.dt # robot always rotates
 
-        # Check for collisions
-        if self.check_wall((new_x, new_y)):
-            return
+        if not self.check_collision(new_x, new_y):
+            # no collision!
+            self.collision = False
+            self.x, self.y = new_x, new_y
+        else:
+            self.collision = True
 
-        # Update robot state
-        self.x, self.y, self.theta = new_x, new_y, new_theta
-        self.rect.center = (self.x, self.y)
+        self.rect.center = self.get_pixel_position()
         self.image = pygame.transform.rotate(self.og_image, degrees(self.theta))
         self.rect = self.image.get_rect(center=self.rect.center)
 
         # Publish odometry
         self.publish_odom()
+    
+    def check_collision(self,x_m, y_m):
+        x, y = self.get_pixel_position(x_m, y_m) # convert meters to pixels
+        
+        # look at pixels around the robot radius and check if any of them are walls
+        for point in self.radius_points:
+            if self.check_wall((x + point[0], y + point[1])):
+                return True
+        return False
+
+    def get_pixel_position(self, x = None, y = None):
+        # if no x, y given, use current self.x, self.y
+        if None in (x, y):
+            x, y = self.x, self.y
+        # take an x,y position in meters and set the pixel position
+        pixel_center = self.screen.get_rect().center
+        return (x * self.pixel_per_meter + pixel_center[0], pixel_center[1] - y * self.pixel_per_meter)
 
     def check_wall(self, point):
         point = (int(point[0]), int(point[1]))
@@ -81,16 +104,17 @@ class Create3(pygame.sprite.Sprite):
                 }
             }
         
+        self.publish_message('odom', msg)
+        
+    def publish_message(self, topic_name, message):
         if self.ros.broadcast_payload:
             self.ros.broadcast_payload({
                     'op': 'publish',
-                    'topic': f'{self.ros.robot_name}/odom',
-                    'msg': msg
+                    'topic': f'/{self.ros.robot_name}/{topic_name}',
+                    'msg': message
                 })
         else:
-            print('No broadcast payload callback set!')
-        
-       
+            print('No websocket connection to broadcast message', end='\r')
 
 
 class Topic:
@@ -127,11 +151,23 @@ class WebSocketProtocol(WebSocketServerProtocol):
         self.robot_name = ros_instance.robot_name
 
         # create topic for /juliet/cmd_vel
-        self.cmd_vel_topic = Topic(ros_instance, f'{self.robot_name}/cmd_vel', 'geometry_msgs/Twist')
+        self.cmd_vel_topic = Topic(ros_instance, f'/{self.robot_name}/cmd_vel', 'geometry_msgs/Twist')
 
         # create a callback for sending messages to the network
-        self.ros.broadcast_payload = lambda payload: self.sendMessage(json.dumps(payload).encode('utf8'))
-        
+        self.ros.broadcast_payload = lambda payload: self.broadcast_message(payload)
+
+    
+    # if we get a connection, set the ros instance to connected
+    def onConnect(self, request):
+        self.ros.is_connected = True
+        print(f'Connected to {request.peer}')
+
+    def broadcast_message(self, payload):
+        try:
+            self.sendMessage(json.dumps(payload).encode('utf8'))
+        except:
+            self.ros.is_connected = False
+            print('No Websocket Connection!' , end='\r')        
 
     def onMessage(self, payload, isBinary):
         if not isBinary:
