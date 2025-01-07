@@ -28,7 +28,11 @@ class Create3(pygame.sprite.Sprite):
         self.x = self.rect.centerx
         self.y = self.rect.centery
         self.v = 0
-        self.velocity_multiplier = 5
+        self.pixel_per_meter = 200
+
+        # timing variables
+        self.fps = 60
+        self.dt = 1 / self.fps
 
         # ROS topics
         self.ros = ros_instance
@@ -38,14 +42,14 @@ class Create3(pygame.sprite.Sprite):
     def update(self):
         # Update velocities from cmd_vel topic
         if self.cmd_vel_topic.msg:
-            print(self.cmd_vel_topic.msg)
+            #print(self.cmd_vel_topic.msg)
             self.v = self.cmd_vel_topic.msg['linear']['x']
             self.theta_dot = self.cmd_vel_topic.msg['angular']['z']
 
-        # Calculate new position
-        new_x = self.x + self.v * cos(self.theta) * self.velocity_multiplier
-        new_y = self.y - self.v * sin(self.theta) * self.velocity_multiplier
-        new_theta = self.theta + self.theta_dot
+        # Calculate new position with TIME_STEP
+        new_x = self.x + self.v * cos(self.theta) * self.dt  * self.pixel_per_meter
+        new_y = self.y - self.v * sin(self.theta) * self.dt * self.pixel_per_meter
+        new_theta = self.theta + self.theta_dot * self.dt
 
         # Check for collisions
         if self.check_wall((new_x, new_y)):
@@ -87,11 +91,12 @@ class WebSocketProtocol(WebSocketServerProtocol):
         if not isBinary:
             try:
                 message = json.loads(payload.decode('utf8'))
-                #print(message)
-                #print(message['msg']['linear']['x'])
-                self.robot.cmd_vel_topic.msg = message['msg']
-            except json.JSONDecodeError:
+                if 'msg' in message:
+                    twist = message['msg']
+                    self.robot.cmd_vel_topic.publish(twist)
+            except:
                 print("Invalid JSON received")
+                print(payload)
 
     def send_odometry_message(self):
         odometry_message = {
@@ -140,6 +145,13 @@ def pygame_event_loop(screen, robot, clock):
     robot.update()
     screen.fill((255, 255, 255))  # Clear the screen
     screen.blit(robot.image, robot.rect.topleft)
+
+    # put fps in top left corner
+    fps = clock.get_fps()
+    font = pygame.font.Font(None, 24)
+    text = font.render(f'FPS: {fps:.2f}', True, (0, 0, 0))
+    screen.blit(text, (10, 10))
+    
     pygame.display.flip()
     clock.tick(60)
 
