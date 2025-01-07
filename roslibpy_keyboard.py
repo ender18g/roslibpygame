@@ -10,7 +10,7 @@ screen = pygame.display.set_mode((400, 300))
 pygame.display.set_caption("Control Create3 Robot")
 
 # Connect to ROS
-ros_node = roslibpy.Ros(host='127.0.0.1', port=9090)
+ros_node = roslibpy.Ros(host='127.0.0.1', port=9012)
 ros_node.run()
 
 # Create a publisher for the /juliet/cmd_vel topic (Twist messages)
