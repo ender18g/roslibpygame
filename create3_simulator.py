@@ -24,9 +24,9 @@ class Create3(pygame.sprite.Sprite):
         # Robot state
         self.theta = 0
         self.theta_dot = 0
-        self.x = self.rect.centerx
-        self.y = self.rect.centery
-        self.v = 0
+        self.x = self.rect.centerx # this should be in meters
+        self.y = self.rect.centery # this should be in meters
+        self.v = 0                 # linear velocity in m/s 
         self.pixel_per_meter = 200
 
         # timing variables
