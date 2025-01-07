@@ -262,7 +262,7 @@ def main():
     pygame_task = task.LoopingCall(ros.run_with_exit, reactor)
     pygame_task.start(1/61)
 
-    print(f"WebSocket server running on ws://{ip}:{port} with robot name {robot_name}")
+    print(f"Simulated Robot: {robot_name} on ws://{ip}:{port}")
     reactor.run()
 
 
