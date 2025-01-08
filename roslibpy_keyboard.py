@@ -12,8 +12,8 @@ screen = pygame.display.set_mode((400, 300))
 pygame.display.set_caption("Control Create3 Robot")
 
 # Connect to ROS
-#ros_node = roslibpy.Ros(host='127.0.0.1', port=9012) # simulator
-ros_node = roslibpy.Ros(host='192.168.8.104', port=9012) # hardware (rosbridge)
+ros_node = roslibpy.Ros(host='127.0.0.1', port=9012) # simulator
+#ros_node = roslibpy.Ros(host='192.168.8.104', port=9012) # hardware (rosbridge)
 
 ros_node.run()
 

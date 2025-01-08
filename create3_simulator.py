@@ -64,7 +64,7 @@ Usage:
         self.odom_topic = Topic(ros_instance, f'/{name}/odom', 'nav_msgs/Odometry')
         self.imu_topic = Topic(ros_instance, f'/{name}/imu', 'sensor_msgs/Imu')
         self.ir_topic = Topic(ros_instance, f'/{name}/ir_intensity', 'irobot_create_msgs/IrIntensityVector')
-        self.light_topic = Topic(ros_instance, f'/{name}/cmd_light', 'irobot_create_msgs/LightVector')
+        self.light_topic = Topic(ros_instance, f'/{name}/cmd_lightring', 'irobot_create_msgs/LightVector')
 
 
     def update(self):
@@ -91,6 +91,7 @@ Usage:
         self.rect.center = self.get_pixel_position()
         self.image = self.og_image
         # draw the light ring
+        self.set_lights()
         self.draw_light_ring()
         self.image = pygame.transform.rotate(self.image, degrees(self.theta))
         self.rect = self.image.get_rect(center=self.rect.center)
@@ -284,7 +285,7 @@ class WebSocketProtocol(WebSocketServerProtocol):
         # create all topics in a list
         self.topics = [
                     Topic(ros_instance, f'/{self.robot_name}/cmd_vel', 'geometry_msgs/Twist'),
-                    Topic(ros_instance, f'/{self.robot_name}/cmd_light', 'irobot_create_msgs/LightVector')
+                    Topic(ros_instance, f'/{self.robot_name}/cmd_lightring', 'irobot_create_msgs/LightVector')
                   ]
 
         # create a callback for sending messages to the network
@@ -310,6 +311,7 @@ class WebSocketProtocol(WebSocketServerProtocol):
                 for t in self.topics:
                     # check if the topic is in the message and publish it
                     if t.topic_name == message.get('topic'):
+                        print(f"Received message for {t.topic_name}")
                         t.publish(message.get('msg'))
   
             except:
