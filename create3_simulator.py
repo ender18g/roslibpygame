@@ -29,7 +29,7 @@ Usage:
         self.image = pygame.transform.rotate(self.image, -90)
         self.image = pygame.transform.smoothscale(self.image, (self.image.get_width() // 5, self.image.get_height() // 5))
 
-        self.radius = self.image.get_width() // 2 # radius of robot in pixels
+        self.radius = self.image.get_width() // 2 -10# radius of robot in pixels
         self.radius_points = []
         for i in range(0, 360, 30):
             self.radius_points.append((self.radius * cos(i), self.radius * sin(i)))
@@ -87,7 +87,7 @@ Usage:
         self.image = pygame.transform.rotate(self.og_image, degrees(self.theta))
         self.rect = self.image.get_rect(center=self.rect.center)
 
-        # Publish odometry
+        # Publish sensor messages
         self.publish_odom()
         self.publish_imu()
         self.publish_ir()
@@ -110,13 +110,20 @@ Usage:
         return (x * self.pixel_per_meter + pixel_center[0], pixel_center[1] - y * self.pixel_per_meter)
 
     def check_wall(self, point):
+        #checks pixel value at point and returns True if it is a wall
         point = (int(point[0]), int(point[1]))
         rgb_val = self.ros.background.get_at(point)
         return rgb_val[0] < 200  # Check for a "wall"
 
     def measure_IR(self,x_m,y_m):
         """Simulates LiDAR and returns range measurements."""
-        cx, cy = self.get_pixel_position(x_m, y_m) # convert meters to pixels
+        # cx, cy is the FRONT of the robot
+        px, py = self.get_pixel_position() # current position in pixels
+
+        # get front of robot in pixels
+        fpx = self.radius * cos(self.theta) + px
+        fpy = self.radius * sin(self.theta) + py
+
         ranges = []
 
         for angle in self.ir_points:
@@ -125,9 +132,9 @@ Usage:
             distance = 0
 
             while distance < self.IR_RANGE*self.pixel_per_meter:
-                distance += 1 # in pixels
-                x = int(cx + ray_dx * distance)
-                y = int(cy + ray_dy * distance)
+                distance += 1 # in pixels (resolution distance)
+                x = int(fpx + ray_dx * distance) # pixel x
+                y = int(fpy + ray_dy * distance) # pixel y
 
                 # Check if the ray collides with a wall or obstacle
                 if self.check_wall((x,y)):
@@ -136,10 +143,11 @@ Usage:
             # Store the distance ( for that angle)
             ranges.append(distance)
             # Draw the ray
-            #endpoint = (int(cx + ray_dx * distance), int(cy + ray_dy * distance))
-            #pygame.draw.line(screen, (0, 255, 0), (cx, cy), endpoint, 1)
+            endpoint = (fpx + ray_dx * distance, fpy + ray_dy * distance)
+            pygame.draw.line(self.screen, (0, 255, 0), (fpx, fpy), endpoint, 1)
 
             # TODO: add scaling to range to represent real IR numbers
+        print(f"IR measurements: {ranges}")
         return ranges
 
     def publish_odom(self):
