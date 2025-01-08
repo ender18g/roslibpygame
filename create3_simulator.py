@@ -147,7 +147,6 @@ Usage:
             pygame.draw.line(self.screen, (0, 255, 0), (fpx, fpy), endpoint, 1)
 
             # TODO: add scaling to range to represent real IR numbers
-        print(f"IR measurements: {ranges}")
         return ranges
 
     def publish_odom(self):
@@ -165,6 +164,7 @@ Usage:
         self.publish_message('odom', msg)
     
     def publish_imu(self):
+        # https://iroboteducation.github.io/create3_docs/api/odometry/
         msg = {
                 'orientation': {'x': 0, 'y': 0, 'z': sin(self.theta/2), 'w': cos(self.theta/2)
                 },
@@ -176,10 +176,16 @@ Usage:
         self.publish_message('imu', msg)
 
     def publish_ir(self):
-        msg = {
-                'readings': {'val1': self.ir_measurements[0],'val2': self.ir_measurements[1],'val3': self.ir_measurements[2],'val4': self.ir_measurements[3],'val5': self.ir_measurements[4],'val6': self.ir_measurements[5],'val7': self.ir_measurements[6] 
-                }
-            }
+        frame_names = [
+            'side_left', 'left', 'front_left', 'front_center_left', 'front_center_right', 'front_right', 'right'
+        ]
+
+        readings = [ {'header': {'frame_id': f'ir_intensity_{frame_names[i]}' }, 'value': self.ir_measurements[i]} for i in range(len(self.ir_measurements))]
+
+        msg = { 'readings': readings }
+
+        print(msg)
+
         self.publish_message('ir_intensity', msg)
         
     def publish_message(self, topic_name, message):
