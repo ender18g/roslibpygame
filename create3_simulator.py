@@ -56,7 +56,7 @@ Usage:
 
         # led lights (list of 6 red, green, blue values as dict keys)
         self.light_vector = []
-        self.light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
+        #self.light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
 
         # ROS topics
         self.ros = ros_instance
@@ -105,18 +105,21 @@ Usage:
         if not self.light_vector:
             return
         # take the light vector and draw the on the robot
-        ring_radius = 10 # radius of the ring in pixels
-        ring_width =5 # width of the ring in pixels
+        cy = 20
+        ring_radius = 30 # radius of the ring in pixels
+        cx = self.screen.get_rect().center[0] - ring_radius
+        ring_width = 5 # width of the ring in pixels
         radian_list = [radians(i) for i in range(0, 361, 60)]
-        ring_rect = pygame.Rect(0, 0, ring_radius*2, ring_radius*2)
+        ring_rect = pygame.Rect(cx, cy, ring_radius*2, ring_radius*2)
 
 
         for i in range(len(self.light_vector)):
             light = self.light_vector[i]
             # get the color
-            color = (light.get('red', 255), light.get('green', 255), light.get('blue', 255), 150)
-            # draw the light
-            pygame.draw.line(self.image, color, (self.image.get_width()//2, self.image.get_height()//2), (self.image.get_width()//2 + ring_radius * cos(radian_list[i]), self.image.get_height()//2 + ring_radius * sin(radian_list[i])), ring_width)
+            color = (light.get('red', 255), light.get('green', 255), light.get('blue', 255), 255)
+            # draw the light as an arc on the screen
+            pygame.draw.arc(self.screen, color, ring_rect, radian_list[i], radian_list[i+1], ring_width)
+
 
 
     def set_lights(self):
@@ -127,6 +130,7 @@ Usage:
         led_msg = self.light_topic.msg
         if not led_msg:
             # no message, LIGHTS OFF
+            self.light_vector = []
             return
         else:
             # set the light vector
@@ -303,7 +307,10 @@ class WebSocketProtocol(WebSocketServerProtocol):
         if not isBinary:
             try:
                 message = json.loads(payload.decode('utf8'))
-                for 
+                for t in self.topics:
+                    # check if the topic is in the message and publish it
+                    if t.topic_name == message.get('topic'):
+                        t.publish(message.get('msg'))
   
             except:
                 print("Invalid JSON received")
