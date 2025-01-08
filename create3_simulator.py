@@ -184,7 +184,7 @@ Usage:
         frame_names = [
             'side_left', 'left', 'front_left', 'front_center_left', 'front_center_right', 'front_right', 'right'
         ]
-
+        frame_names.reverse()
         readings = [ {'header': {'frame_id': f'ir_intensity_{frame_names[i]}' }, 'value': self.ir_measurements[i]} for i in range(len(self.ir_measurements))]
 
         msg = { 'readings': readings }
