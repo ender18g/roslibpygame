@@ -124,14 +124,16 @@ Usage:
         fpx = self.radius * cos(self.theta) + px
         fpy = self.radius * sin(self.theta) + py
 
-        ranges = []
+        ranges = [] # range in pixels
+
+        max_pixel_range = self.IR_RANGE * self.pixel_per_meter
 
         for angle in self.ir_points:
             ray_dx = cos(self.theta + radians(angle))
             ray_dy = sin(self.theta + radians(angle))
             distance = 0
 
-            while distance < self.IR_RANGE*self.pixel_per_meter:
+            while distance < max_pixel_range:
                 distance += 1 # in pixels (resolution distance)
                 x = int(fpx + ray_dx * distance) # pixel x
                 y = int(fpy + ray_dy * distance) # pixel y
@@ -147,7 +149,7 @@ Usage:
             pygame.draw.line(self.screen, self.ros.colors.get('red'), (fpx, fpy), endpoint, 1)
 
             # TODO: add scaling to range to represent real IR numbers
-        return ranges
+        return [ r/max_pixel_range * 255 for r in ranges]
 
     def publish_odom(self):
         msg = {
