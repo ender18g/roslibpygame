@@ -114,10 +114,9 @@ Usage:
         for i in range(len(self.light_vector)):
             light = self.light_vector[i]
             # get the color
-            color = (light.get('red', 255), light.get('green', 255), light.get('blue', 255), 200)
+            color = (light.get('red', 255), light.get('green', 255), light.get('blue', 255), 150)
             # draw the light
             pygame.draw.line(self.image, color, (self.image.get_width()//2, self.image.get_height()//2), (self.image.get_width()//2 + ring_radius * cos(radian_list[i]), self.image.get_height()//2 + ring_radius * sin(radian_list[i])), ring_width)
-
 
 
     def set_lights(self):
@@ -129,7 +128,9 @@ Usage:
         if not led_msg:
             # no message, LIGHTS OFF
             return
-        
+        else:
+            # set the light vector
+            self.light_vector = led_msg['leds']        
 
     
     def check_collision(self,x_m, y_m):
@@ -276,8 +277,11 @@ class WebSocketProtocol(WebSocketServerProtocol):
 
         self.robot_name = ros_instance.robot_name
 
-        # create topic for /juliet/cmd_vel
-        self.cmd_vel_topic = Topic(ros_instance, f'/{self.robot_name}/cmd_vel', 'geometry_msgs/Twist')
+        # create all topics in a list
+        self.topics = [
+                    Topic(ros_instance, f'/{self.robot_name}/cmd_vel', 'geometry_msgs/Twist'),
+                    Topic(ros_instance, f'/{self.robot_name}/cmd_light', 'irobot_create_msgs/LightVector')
+                  ]
 
         # create a callback for sending messages to the network
         self.ros.broadcast_payload = lambda payload: self.broadcast_message(payload)
@@ -299,8 +303,8 @@ class WebSocketProtocol(WebSocketServerProtocol):
         if not isBinary:
             try:
                 message = json.loads(payload.decode('utf8'))
-                if 'msg' in message:
-                    self.cmd_vel_topic.publish(message.get('msg'))
+                for 
+  
             except:
                 print("Invalid JSON received")
 
