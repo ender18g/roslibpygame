@@ -42,7 +42,7 @@ Usage:
         self.screen = screen
 
         # Robot state
-        self.pixel_per_meter = 200
+        self.pixel_per_meter = 250
         self.theta = 0 # in radians
         self.theta_dot = 0 # in radians per second
         self.x, self.y = (0,0)
@@ -113,7 +113,7 @@ Usage:
         #checks pixel value at point and returns True if it is a wall
         point = (int(point[0]), int(point[1]))
         rgb_val = self.ros.background.get_at(point)
-        return rgb_val[0] < 200  # Check for a "wall"
+        return rgb_val[2] < 60  # Check for a "wall"
 
     def measure_IR(self,x_m,y_m):
         """Simulates LiDAR and returns range measurements."""
@@ -144,7 +144,7 @@ Usage:
             ranges.append(distance)
             # Draw the ray
             endpoint = (fpx + ray_dx * distance, fpy + ray_dy * distance)
-            pygame.draw.line(self.screen, (0, 255, 0), (fpx, fpy), endpoint, 1)
+            pygame.draw.line(self.screen, self.ros.colors.get('red'), (fpx, fpy), endpoint, 1)
 
             # TODO: add scaling to range to represent real IR numbers
         return ranges
@@ -270,13 +270,14 @@ class RosSimulator:
         self.robots = pygame.sprite.Group()
         self.is_connected = False
         self.topic_dict ={}  # dictionary with topic name as key and topic object as value
-        self.colors = [
-            (13, 27,42),
-            (27, 38, 59),
-            (65, 90, 119),
-            (119, 141, 169),
-            (224, 225, 221)
-        ]
+        self.colors = {
+            # https://coolors.co/292f36-d7263d-ffffff-197bbd-058c42
+            'grey': (41, 47, 54), # grey
+            'red': (215, 38, 61), # red
+            'white' : (255, 255, 255), # white
+            'green' : (5,140,66), # green
+            'blue' : (25,123,189) # blue
+        }
         self.background = self.create_background()
         # set caption
         pygame.display.set_caption('Create3 Robot Simulation')
@@ -298,8 +299,8 @@ class RosSimulator:
         H = self.screen.get_height()
         offset = 300
         wall_width = 40
-        floor_color = self.colors[4]
-        wall_color = self.colors[2]
+        floor_color = self.colors.get('white', (255, 255, 255))
+        wall_color = self.colors.get('blue', (0, 0 , 0))
         # returns background that is size of screen
         background = pygame.Surface(self.screen.get_size())
         background.fill(floor_color)
@@ -337,7 +338,7 @@ class RosSimulator:
         # put fps in top left corner
         fps = self.clock.get_fps()
         font = pygame.font.Font(None, 24)
-        text = font.render(f'FPS: {fps:.2f}', True, self.colors[1])
+        text = font.render(f'FPS: {fps:.2f}', True, self.colors.get('green', (0, 0, 255)))
         self.screen.blit(text, (10, 10))
 
         # if 'p' pressed, take a screenshot
