@@ -113,24 +113,27 @@ Usage:
         #checks pixel value at point and returns True if it is a wall
         point = (int(point[0]), int(point[1]))
         rgb_val = self.ros.background.get_at(point)
-        return rgb_val[2] < 60  # Check for a "wall"
+        return rgb_val[0] < 60  # Check for a "wall"
 
     def measure_IR(self,x_m,y_m):
         """Simulates LiDAR and returns range measurements."""
         # cx, cy is the FRONT of the robot
         px, py = self.get_pixel_position() # current position in pixels
 
-        # get front of robot in pixels
-        fpx = self.radius * cos(self.theta) + px
-        fpy = self.radius * sin(self.theta) + py
+        
 
         ranges = [] # range in pixels
 
         max_pixel_range = self.IR_RANGE * self.pixel_per_meter
 
         for angle in self.ir_points:
+            
+            # get front of robot in pixels
+            fpx = self.radius * cos(self.theta+radians(angle)) + px
+            fpy = self.radius * sin(-self.theta-radians(angle)) + py
+
             ray_dx = cos(self.theta + radians(angle))
-            ray_dy = sin(self.theta + radians(angle))
+            ray_dy = sin(-self.theta - radians(angle))
             distance = 0
 
             while distance < max_pixel_range:
