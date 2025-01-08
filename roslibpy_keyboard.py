@@ -30,12 +30,23 @@ velocities = {
 # Function to handle the IR intensity messages
 def odom_callback(message):
     print(f'Odometry message received: {message}')
+    
+def imu_callback(message):
+    print(f'IMU message received: {message}')
+
+def ir_callback(message):
+    print(f'IR message received: {message}')
+ 
 
 # Create a subscriber to the /juliet/odom topic
 odom_sub = roslibpy.Topic(ros_node, '/juliet/odom', 'nav_msgs/Odometry')
+imu_sub = roslibpy.Topic(ros_node, '/juliet/imu', 'sensor_msgs/Imu')
+ir_sub = roslibpy.Topic(ros_node, '/juliet/ir_intensity', 'irobot_create_msgs/IrIntensityVector')
 
 # Subscribe to the /juliet/odom topic
-odom_sub.subscribe(odom_callback)
+#odom_sub.subscribe(odom_callback)
+#imu_sub.subscribe(imu_callback)
+ir_sub.subscribe(ir_callback)
 
 # Main loopd
 running = True

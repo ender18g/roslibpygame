@@ -1,5 +1,5 @@
 import pygame
-from math import cos, sin, degrees
+from math import cos, sin, degrees, radians
 import json
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol
 from twisted.internet import reactor, task
@@ -8,6 +8,19 @@ import random
 
 
 class Create3(pygame.sprite.Sprite):
+    """
+This module simulates a Create3 robot using Pygame and integrates with ROS via WebSocket.
+Classes:
+    Create3(pygame.sprite.Sprite): Represents the Create3 robot with methods to update its state, check for collisions, and publish odometry.
+    Topic: Represents a ROS topic with methods to publish and subscribe to messages.
+    WebSocketProtocol(WebSocketServerProtocol): Handles WebSocket connections and message broadcasting for ROS topics.
+    RosSimulator: Manages the Pygame simulation environment, including robot creation, background setup, and the main simulation loop.
+Functions:
+    main(): Initializes the ROS simulator, sets up the WebSocket server, and starts the Pygame simulation loop integrated with the Twisted reactor.
+Usage:
+    Run this module directly to start the Create3 robot simulation with ROS integration.
+"""
+
     def __init__(self, screen, ros_instance, name='juliet'):
         super().__init__()
         print(f'Creating robot {name}')
@@ -20,6 +33,8 @@ class Create3(pygame.sprite.Sprite):
         self.radius_points = []
         for i in range(0, 360, 30):
             self.radius_points.append((self.radius * cos(i), self.radius * sin(i)))
+        self.ir_points = [-65.3,-34,-14.25,3,20,38,65.3] # in degrees, from create3 technical specs
+        self.IR_RANGE = 0.1 # in meters
 
         self.og_image = self.image
         self.rect = self.image.get_rect(center=screen.get_rect().center)
@@ -28,11 +43,12 @@ class Create3(pygame.sprite.Sprite):
 
         # Robot state
         self.pixel_per_meter = 200
-        self.theta = 0
-        self.theta_dot = 0
+        self.theta = 0 # in radians
+        self.theta_dot = 0 # in radians per second
         self.x, self.y = (0,0)
         self.rect.center = self.get_pixel_position()
-        self.v = 0                 # linear velocity in m/s 
+        self.v = 0                 # linear velocity in m/s
+        self.ir_measurements = [0]*len(self.ir_points)
 
         # timing variables
         self.fps = 60
@@ -42,6 +58,8 @@ class Create3(pygame.sprite.Sprite):
         self.ros = ros_instance
         self.cmd_vel_topic = Topic(ros_instance, f'/{name}/cmd_vel', 'geometry_msgs/Twist')
         self.odom_topic = Topic(ros_instance, f'/{name}/odom', 'nav_msgs/Odometry')
+        self.imu_topic = Topic(ros_instance, f'/{name}/imu', 'sensor_msgs/Imu')
+        self.ir_topic = Topic(ros_instance, f'/{name}/ir_intensity', 'irobot_create_msgs/IrIntensityVector')
 
 
     def update(self):
@@ -63,12 +81,16 @@ class Create3(pygame.sprite.Sprite):
         else:
             self.collision = True
 
+        # generate IR measurements
+        self.ir_measurements = self.measure_IR(self.x, self.y)
         self.rect.center = self.get_pixel_position()
         self.image = pygame.transform.rotate(self.og_image, degrees(self.theta))
         self.rect = self.image.get_rect(center=self.rect.center)
 
         # Publish odometry
         self.publish_odom()
+        self.publish_imu()
+        self.publish_ir()
     
     def check_collision(self,x_m, y_m):
         x, y = self.get_pixel_position(x_m, y_m) # convert meters to pixels
@@ -92,6 +114,34 @@ class Create3(pygame.sprite.Sprite):
         rgb_val = self.ros.background.get_at(point)
         return rgb_val[0] < 200  # Check for a "wall"
 
+    def measure_IR(self,x_m,y_m):
+        """Simulates LiDAR and returns range measurements."""
+        cx, cy = self.get_pixel_position(x_m, y_m) # convert meters to pixels
+        ranges = []
+
+        for angle in self.ir_points:
+            ray_dx = cos(self.theta + radians(angle))
+            ray_dy = sin(self.theta + radians(angle))
+            distance = 0
+
+            while distance < self.IR_RANGE*self.pixel_per_meter:
+                distance += 1 # in pixels
+                x = int(cx + ray_dx * distance)
+                y = int(cy + ray_dy * distance)
+
+                # Check if the ray collides with a wall or obstacle
+                if self.check_wall((x,y)):
+                    break
+    
+            # Store the distance ( for that angle)
+            ranges.append(distance)
+            # Draw the ray
+            #endpoint = (int(cx + ray_dx * distance), int(cy + ray_dy * distance))
+            #pygame.draw.line(screen, (0, 255, 0), (cx, cy), endpoint, 1)
+
+            # TODO: add scaling to range to represent real IR numbers
+        return ranges
+
     def publish_odom(self):
         msg = {
                 'pose': {
@@ -105,8 +155,27 @@ class Create3(pygame.sprite.Sprite):
             }
         
         self.publish_message('odom', msg)
+    
+    def publish_imu(self):
+        msg = {
+                'orientation': {'x': 0, 'y': 0, 'z': sin(self.theta/2), 'w': cos(self.theta/2)
+                },
+                'angular_velocity': {'x': 0, 'y': 0, 'z': self.theta_dot
+                },
+                'linear_acceleration': {'x': 0, 'y': 0, 'z': 0
+                },
+            }
+        self.publish_message('imu', msg)
+
+    def publish_ir(self):
+        msg = {
+                'readings': {'val1': self.ir_measurements[0],'val2': self.ir_measurements[1],'val3': self.ir_measurements[2],'val4': self.ir_measurements[3],'val5': self.ir_measurements[4],'val6': self.ir_measurements[5],'val7': self.ir_measurements[6] 
+                }
+            }
+        self.publish_message('ir_intensity', msg)
         
     def publish_message(self, topic_name, message):
+        #print(topic_name, message)
         if self.ros.broadcast_payload:
             self.ros.broadcast_payload({
                     'op': 'publish',
