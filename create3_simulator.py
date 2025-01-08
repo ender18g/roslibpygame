@@ -55,8 +55,8 @@ Usage:
         self.dt = 1 / self.fps
 
         # led lights (list of 6 red, green, blue values as dict keys)
-        light_vector = []
-        light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
+        self.light_vector = []
+        self.light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
 
         # ROS topics
         self.ros = ros_instance
@@ -89,13 +89,36 @@ Usage:
         # generate IR measurements
         self.ir_measurements = self.measure_IR(self.x, self.y)
         self.rect.center = self.get_pixel_position()
-        self.image = pygame.transform.rotate(self.og_image, degrees(self.theta))
+        self.image = self.og_image
+        # draw the light ring
+        self.draw_light_ring()
+        self.image = pygame.transform.rotate(self.image, degrees(self.theta))
         self.rect = self.image.get_rect(center=self.rect.center)
 
         # Publish sensor messages
         self.publish_odom()
         self.publish_imu()
         self.publish_ir()
+
+    def draw_light_ring(self):
+        # if no light vector, return
+        if not self.light_vector:
+            return
+        # take the light vector and draw the on the robot
+        ring_radius = 10 # radius of the ring in pixels
+        ring_width =5 # width of the ring in pixels
+        radian_list = [radians(i) for i in range(0, 361, 60)]
+        ring_rect = pygame.Rect(0, 0, ring_radius*2, ring_radius*2)
+
+
+        for i in range(len(self.light_vector)):
+            light = self.light_vector[i]
+            # get the color
+            color = (light.get('red', 255), light.get('green', 255), light.get('blue', 255), 200)
+            # draw the light
+            pygame.draw.line(self.image, color, (self.image.get_width()//2, self.image.get_height()//2), (self.image.get_width()//2 + ring_radius * cos(radian_list[i]), self.image.get_height()//2 + ring_radius * sin(radian_list[i])), ring_width)
+
+
 
     def set_lights(self):
         '''
@@ -107,8 +130,6 @@ Usage:
             # no message, LIGHTS OFF
             return
         
-
-
 
     
     def check_collision(self,x_m, y_m):
@@ -207,8 +228,6 @@ Usage:
         readings = [ {'header': {'frame_id': f'ir_intensity_{frame_names[i]}' }, 'value': self.ir_measurements[i]} for i in range(len(self.ir_measurements))]
 
         msg = { 'readings': readings }
-
-        print(msg)
 
         self.publish_message('ir_intensity', msg)
         
