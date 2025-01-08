@@ -54,12 +54,17 @@ Usage:
         self.fps = 60
         self.dt = 1 / self.fps
 
+        # led lights (list of 6 red, green, blue values as dict keys)
+        light_vector = []
+        light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
+
         # ROS topics
         self.ros = ros_instance
         self.cmd_vel_topic = Topic(ros_instance, f'/{name}/cmd_vel', 'geometry_msgs/Twist')
         self.odom_topic = Topic(ros_instance, f'/{name}/odom', 'nav_msgs/Odometry')
         self.imu_topic = Topic(ros_instance, f'/{name}/imu', 'sensor_msgs/Imu')
         self.ir_topic = Topic(ros_instance, f'/{name}/ir_intensity', 'irobot_create_msgs/IrIntensityVector')
+        self.light_topic = Topic(ros_instance, f'/{name}/cmd_light', 'irobot_create_msgs/LightVector')
 
 
     def update(self):
@@ -91,6 +96,20 @@ Usage:
         self.publish_odom()
         self.publish_imu()
         self.publish_ir()
+
+    def set_lights(self):
+        '''
+        "{override_system: true, leds: [{red: 255, green: 0, blue: 0}, {red: 0, green: 255, blue: 0}, {red: 0, green: 0, blue: 255}, {red: 255, green: 255, blue: 0}, {red: 255, green: 0, blue: 255}, {red: 0, green: 255, blue: 255}]}"
+        '''
+        # get the led msg
+        led_msg = self.light_topic.msg
+        if not led_msg:
+            # no message, LIGHTS OFF
+            return
+        
+
+
+
     
     def check_collision(self,x_m, y_m):
         x, y = self.get_pixel_position(x_m, y_m) # convert meters to pixels
