@@ -56,7 +56,7 @@ Usage:
 
         # led lights (list of 6 red, green, blue values as dict keys)
         self.light_vector = []
-        #self.light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
+        self.light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
 
         # ROS topics
         self.ros = ros_instance
@@ -131,7 +131,7 @@ Usage:
         led_msg = self.light_topic.msg
         if not led_msg:
             # no message, LIGHTS OFF
-            self.light_vector = []
+            #self.light_vector = []
             return
         else:
             # set the light vector
