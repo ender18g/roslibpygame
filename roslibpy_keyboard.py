@@ -12,23 +12,22 @@ screen = pygame.display.set_mode((400, 300))
 pygame.display.set_caption("Control Create3 Robot")
 
 # Connect to ROS
+robot_name = 'juliet'
 ros_node = roslibpy.Ros(host='127.0.0.1', port=9012) # simulator
 #ros_node = roslibpy.Ros(host='192.168.8.104', port=9012) # hardware (rosbridge)
 
-ros_node.run()
-
-
+ros_node.run() # this is a non-blocking call
 
 # Create a publisher for the /juliet/cmd_vel topic (Twist messages)
-cmd_vel_pub = roslibpy.Topic(ros_node, '/juliet/cmd_vel', 'geometry_msgs/Twist')
+cmd_vel_pub = roslibpy.Topic(ros_node, f'/{robot_name}/cmd_vel', 'geometry_msgs/Twist')
 
-cmd_lightring_pub = roslibpy.Topic(ros_node, '/juliet/cmd_lightring', 'irobot_create_msgs/LightringLeds')
+cmd_lightring_pub = roslibpy.Topic(ros_node, f'/{robot_name}/cmd_lightring', 'irobot_create_msgs/LightringLeds')
 
 # Movement parameters
 speed = 0.2  # Linear speed
 turn_speed = 1.0  # Angular speed
 
-# Initialize the velocity dictionary
+# Initialize the cmd_vel message
 velocities = {
     'linear': {'x': 0.0, 'y': 0.0, 'z': 0.0},
     'angular': {'x': 0.0, 'y': 0.0, 'z': 0.0}
@@ -47,18 +46,18 @@ def ir_callback(message):
  
 
 # Create a subscriber to the /juliet/odom topic
-odom_sub = roslibpy.Topic(ros_node, '/juliet/odom', 'nav_msgs/Odometry')
-imu_sub = roslibpy.Topic(ros_node, '/juliet/imu', 'sensor_msgs/Imu')
-ir_sub = roslibpy.Topic(ros_node, '/juliet/ir_intensity', 'irobot_create_msgs/IrIntensityVector')
+odom_sub = roslibpy.Topic(ros_node, f'/{robot_name}/odom', 'nav_msgs/Odometry')
+imu_sub = roslibpy.Topic(ros_node, f'/{robot_name}/imu', 'sensor_msgs/Imu')
+ir_sub = roslibpy.Topic(ros_node, f'/{robot_name}/ir_intensity', 'irobot_create_msgs/IrIntensityVector')
 
 # Subscribe to the /juliet/odom topic
 #odom_sub.subscribe(odom_callback)
 #imu_sub.subscribe(imu_callback)
 #ir_sub.subscribe(ir_callback)
 
-# Main loopd
+# Main loop
 running = True
-lightflag = False
+lightflag = True
 while running:
     # Handle Pygame events
     for event in pygame.event.get():
@@ -121,20 +120,15 @@ while running:
     if lightflag:
         cmd_lightring_pub.publish(message_light)
         print("sent light message")
-        lightflag = False
+        #lightflag = False
 
     # Refresh the display
     screen.fill((0, 0, 0))  # Black background
     pygame.display.flip()
-    time.sleep(0.1)
+    
+    time.sleep(0.1) # slow to 10Hz to avoid flooding the network
 
 
-message_light = roslibpy.Message({
-        'leds': led_colors,
-        'override_system': False
-    })
-
-cmd_lightring_pub.publish(message_light)
 # Clean up and close the Pygame window and ROS connection
 pygame.quit()
 ros_node.terminate()
