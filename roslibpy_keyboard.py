@@ -119,7 +119,6 @@ while running:
 
     if lightflag:
         cmd_lightring_pub.publish(message_light)
-        print("sent light message")
         #lightflag = False
 
     # Refresh the display
