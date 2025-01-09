@@ -56,7 +56,8 @@ Usage:
 
         # led lights (list of 6 red, green, blue values as dict keys)
         self.light_vector = []
-        self.light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
+        #self.light_vector = [{'red':random.randint(0,255), 'green':random.randint(0,255), 'blue':random.randint(0,255)} for i in range(6)]
+        self.draw_light_ring()
 
         # ROS topics
         self.ros = ros_instance
@@ -93,6 +94,7 @@ Usage:
         # draw the light ring
         self.set_lights()
         self.draw_light_ring()
+        self.screen.blit(self.light_ring, self.light_ring_rect)
         self.image = pygame.transform.rotate(self.image, degrees(self.theta))
         self.rect = self.image.get_rect(center=self.rect.center)
 
@@ -102,25 +104,39 @@ Usage:
         self.publish_ir()
 
     def draw_light_ring(self):
-        # if no light vector, return
-        if not self.light_vector:
-            return
-        # take the light vector and draw the on the robot
-        cy = 20
-        ring_radius = 30 # radius of the ring in pixels
-        cx = self.screen.get_rect().center[0] - ring_radius
-        ring_width = 5 # width of the ring in pixels
-        radian_list = [radians(i) for i in range(0, 361, 60)]
-        ring_rect = pygame.Rect(cx, cy, ring_radius*2, ring_radius*2)
+        # make a new surface to draw the light ring
+        ring_radius = 40
+        ring_radius_extended = 50
+        ring_width = 10
+        self.light_ring = pygame.Surface((2*ring_radius, 2*ring_radius), pygame.SRCALPHA)
+        self.light_ring.fill((0,0,0,0))
+        self.light_ring_rect = self.light_ring.get_rect()
+        cx, cy = self.light_ring_rect.center
 
 
-        for i in range(len(self.light_vector)):
-            light = self.light_vector[i]
-            # get the color
-            color = (light.get('red', 255), light.get('green', 255), light.get('blue', 255), 255)
-            # draw the light as an arc on the screen
-            pygame.draw.arc(self.screen, color, ring_rect, radian_list[i], radian_list[i+1], ring_width)
 
+        # loop over each pie slice and draw the color in a polygon
+        for i, color in enumerate(self.light_vector):
+            start_angle = radians(i * 60)
+            end_angle = radians((i+1) * 60)
+            pt1 = (cx, cy) # center of the circle
+            pt2 = (cx + ring_radius_extended * cos(start_angle), cy + ring_radius_extended * sin(start_angle))
+            pt3 = (cx + ring_radius_extended * cos(end_angle), cy + ring_radius_extended * sin(end_angle))
+            pygame.draw.polygon(self.light_ring, (color['red'], color['green'], color['blue']), [pt1, pt2, pt3])
+
+        # now cut a hole in the middle
+        pygame.draw.circle(self.light_ring, (0,0,0,0), (cx, cy), ring_radius - ring_width)
+
+        # now make a circl mask to make the light ring circular
+        mask = pygame.Surface((2*ring_radius, 2*ring_radius), pygame.SRCALPHA)
+        mask.fill((255,255,255,0))
+        pygame.draw.circle(mask, (0,0,0,255), (cx, cy), ring_radius)
+        self.light_ring.blit(mask, (0,0), special_flags=pygame.BLEND_RGB_ADD)
+
+
+        # blit the light ring to the screen
+        self.light_ring_rect.centerx = 50
+        self.light_ring_rect.centery = 70
 
 
     def set_lights(self):
@@ -131,11 +147,14 @@ Usage:
         led_msg = self.light_topic.msg
         if not led_msg:
             # no message, LIGHTS OFF
-            #self.light_vector = []
+            self.light_vector = []
             return
         else:
             # set the light vector
-            self.light_vector = led_msg['leds']        
+            self.light_vector = led_msg['leds']  
+
+        # make the light ring
+        self.draw_light_ring()      
 
     
     def check_collision(self,x_m, y_m):
