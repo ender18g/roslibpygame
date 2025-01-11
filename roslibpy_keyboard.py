@@ -133,7 +133,7 @@ while running:
     screen.fill((0, 0, 0))  # Black background
     pygame.display.flip()
     
-    time.sleep(0.1) # slow to 10Hz to avoid flooding the network
+    time.sleep(0.4) # slow to 10Hz to avoid flooding the network
 
 # Clean up and close the Pygame window and ROS connection
 pygame.quit()

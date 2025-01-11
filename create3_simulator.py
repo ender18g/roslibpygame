@@ -77,8 +77,6 @@ Usage:
 
         # callback to set lights
         self.light_topic.subscribe(self.set_lights)
-        print(self.light_topic.callbacks)
-        print(id(self.light_topic))
 
     def update(self):
         # Update velocities from cmd_vel topic
@@ -115,7 +113,7 @@ Usage:
             threading.Thread(target=self.play_audio, args=(self.audio_topic.msg['notes'][0]['note'],self.audio_topic.msg['notes'][0]['duration']), daemon=True).start()
             self.audio_topic.msg = None
         
-        self.draw_light_ring()
+        # Blit the light ring that has already been created
         self.screen.blit(self.light_ring, self.light_ring_rect)
         self.image = pygame.transform.rotate(self.image, degrees(self.theta))
         self.rect = self.image.get_rect(center=self.rect.center)
@@ -164,16 +162,19 @@ Usage:
         '''
         "{override_system: true, leds: [{red: 255, green: 0, blue: 0}, {red: 0, green: 255, blue: 0}, {red: 0, green: 0, blue: 255}, {red: 255, green: 255, blue: 0}, {red: 255, green: 0, blue: 255}, {red: 0, green: 255, blue: 255}]}"
         '''
-        print('Setting lights')
+        print('setting lights')
+        led_msg = msg.get('leds', None)
         # get the led msg
-        led_msg = msg.get('msg', None)
         if not led_msg:
             # no message, LIGHTS OFF
             self.light_vector = []
             return
         else:
             # set the light vector
-            self.light_vector = led_msg['leds']    
+            self.light_vector = led_msg
+        
+        # draw the light ring
+        self.draw_light_ring()
   
     def check_collision(self,x_m, y_m):
         x, y = self.get_pixel_position(x_m, y_m) # convert meters to pixels
@@ -275,15 +276,12 @@ Usage:
         self.publish_message('ir_intensity', msg)
         
     def publish_message(self, topic_name, message):
-        #print(topic_name, message)
         if self.ros.broadcast_payload:
             self.ros.broadcast_payload({
                     'op': 'publish',
                     'topic': f'/{self.ros.robot_name}/{topic_name}',
                     'msg': message
                 })
-        else:
-            print('No websocket connection to broadcast message', end='\r')
     
     def play_audio(self, frequency, duration):
         print("here")
@@ -331,6 +329,7 @@ class Topic:
         self.timeout = 1000 # in ms
         self.last_msg_time = 0
         self.max_message_rate = 20 # in Hz
+        self.avg_message_rate = 0
 
     def publish(self, message):
         self.msg = message
@@ -338,17 +337,19 @@ class Topic:
         # update the time
         self.last_msg_time = pygame.time.get_ticks()
 
-        print(self.callbacks)
-
         # run all callbacks
         [callback(message) for callback in self.callbacks]
 
         # check to see if the message rate is too high
         msg_rate = 1000 / (pygame.time.get_ticks() - self.last_msg_time)
+
+        # add the message rate to the average
+        self.avg_message_rate = 0.99 * self.avg_message_rate + 0.01 * msg_rate
+
         if msg_rate > self.max_message_rate:
-            print(f"Message rate too high for {self.topic_name}: {msg_rate:.2f} Hz")
-            self.ros.set_alert(f"Message rate too high for {self.topic_name}: {msg_rate:.2f} Hz")
-    
+            print(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
+            self.ros.set_alert(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
+            
     def has_timed_out(self):
         # returns True if the topic has timed out
         return pygame.time.get_ticks() - self.last_msg_time > self.timeout
@@ -377,19 +378,17 @@ class WebSocketProtocol(WebSocketServerProtocol):
         except:
             self.ros.is_connected = False
             print('No Websocket Connection!' , end='\r') 
-            self.ros.set_alert('No Websocket Connection!')       
+            self.ros.set_alert('Not Connected')    
 
     def onMessage(self, payload, isBinary):
         if not isBinary:
             try:
                 message = json.loads(payload.decode('utf8'))
                 # get the topic
-                t = Topic(self.ros, message.get('topic', ''))
-                print(t.callbacks)
-                t.publish(message.get('msg'))
-                print(f"Received message on topic {t.topic_name}")
-                print(id(t))
-  
+                t_name = message.get('topic', '')
+                if t_name in self.ros.topic_dict:
+                    t = self.ros.topic_dict[t_name]
+                    t.publish(message.get('msg', None))
             except:
                 pass
 
