@@ -4,6 +4,7 @@ import threading
 import time
 import random
 
+
 # Initialize Pygame
 pygame.init()
 
@@ -98,6 +99,7 @@ while running:
         }
     })
 
+
     # Define the message
     # Example: Set 6 LEDs with specified colors (RGB values)
     led_colors = [
@@ -114,12 +116,18 @@ while running:
         'override_system': True
     })
 
+    # create a python dictionary variable with correct key-value structure
+    #vector3_message = {"x": 10.0, "y": 20.0, "z": 30.0}
+    # create a ROS message from the dictionary using roslibpy.Message method
+    #vector3_ROS_message = roslibpy.Message(vector3_message) 
+
+
     # Publish the twist message to ROS
     cmd_vel_pub.publish(twist_message)
 
     if lightflag:
         cmd_lightring_pub.publish(message_light)
-        #lightflag = False
+        lightflag = False
 
     # Refresh the display
     screen.fill((0, 0, 0))  # Black background

@@ -1,10 +1,13 @@
 import pygame
-from math import cos, sin, degrees, radians
+from pygame.locals import *
+from math import cos, sin, degrees, radians, pi
 import json
 from autobahn.twisted.websocket import WebSocketServerFactory, WebSocketServerProtocol
 from twisted.internet import reactor, task
-
 import random
+import numpy
+import threading
+
 
 
 class Create3(pygame.sprite.Sprite):
@@ -23,6 +26,8 @@ Usage:
 
     def __init__(self, screen, ros_instance, name='juliet'):
         super().__init__()
+        
+        
         print(f'Creating robot {name}')
         
         self.image = pygame.image.load('./assets/images/create3.png').convert_alpha()
@@ -50,6 +55,7 @@ Usage:
         self.v = 0                 # linear velocity in m/s
         self.ir_measurements = [0]*len(self.ir_points)
 
+        
         # timing variables
         self.fps = 60
         self.dt = 1 / self.fps
@@ -66,7 +72,8 @@ Usage:
         self.imu_topic = Topic(ros_instance, f'/{name}/imu', 'sensor_msgs/Imu')
         self.ir_topic = Topic(ros_instance, f'/{name}/ir_intensity', 'irobot_create_msgs/IrIntensityVector')
         self.light_topic = Topic(ros_instance, f'/{name}/cmd_lightring', 'irobot_create_msgs/LightVector')
-
+        self.audio_topic = Topic(ros_instance, f'/{name}/cmd_audio', 'irobot_create_msgs/AudioNoteVector')
+        self.audio_topic.msg = None
 
     def update(self):
         # Update velocities from cmd_vel topic
@@ -93,6 +100,13 @@ Usage:
         self.image = self.og_image
         # draw the light ring
         self.set_lights()
+
+        # play audio if message comes through
+        print(self.audio_topic.msg)
+        if self.audio_topic.msg is not None:
+            threading.Thread(target=self.play_audio, args=(self.audio_topic.msg['notes'][0]['note'],self.audio_topic.msg['notes'][0]['duration']), daemon=True).start()
+            self.audio_topic.msg = None
+        
         self.draw_light_ring()
         self.screen.blit(self.light_ring, self.light_ring_rect)
         self.image = pygame.transform.rotate(self.image, degrees(self.theta))
@@ -138,7 +152,6 @@ Usage:
         self.light_ring_rect.centerx = 50
         self.light_ring_rect.centery = 70
 
-
     def set_lights(self):
         '''
         "{override_system: true, leds: [{red: 255, green: 0, blue: 0}, {red: 0, green: 255, blue: 0}, {red: 0, green: 0, blue: 255}, {red: 255, green: 255, blue: 0}, {red: 255, green: 0, blue: 255}, {red: 0, green: 255, blue: 255}]}"
@@ -155,8 +168,7 @@ Usage:
 
         # make the light ring
         self.draw_light_ring()      
-
-    
+  
     def check_collision(self,x_m, y_m):
         x, y = self.get_pixel_position(x_m, y_m) # convert meters to pixels
         
@@ -266,6 +278,29 @@ Usage:
                 })
         else:
             print('No websocket connection to broadcast message', end='\r')
+    
+    def play_audio(self, frequency, duration):
+        print("here")
+        sample_rate = 44100
+        n_samples = int(round(duration*sample_rate))
+
+        frequency_l = frequency
+        frequency_r = frequency + 110
+
+        #setup our numpy array to handle 16 bit ints, which is what we set our mixer to expect with "bits" up above
+        buf = numpy.zeros((n_samples, 2), dtype = numpy.int16)
+        max_sample = 2**(16 - 1) - 1
+
+        for s in range(n_samples):
+            t = float(s)/sample_rate    # time in seconds
+
+            #grab the x-coordinate of the sine wave at a given time, while constraining the sample to what our mixer is set to with "bits"
+            buf[s][0] = int(round(max_sample*sin(2*pi*frequency_l*t)))        # left
+            buf[s][1] = int(round(max_sample*0.5*sin(2*pi*frequency_r*t)))    # right
+
+        sound = pygame.sndarray.make_sound(buf)
+        #play once, zero repeats
+        sound.play(loops = 0)
 
 
 class Topic:
@@ -304,7 +339,8 @@ class WebSocketProtocol(WebSocketServerProtocol):
         # create all topics in a list
         self.topics = [
                     Topic(ros_instance, f'/{self.robot_name}/cmd_vel', 'geometry_msgs/Twist'),
-                    Topic(ros_instance, f'/{self.robot_name}/cmd_lightring', 'irobot_create_msgs/LightVector')
+                    Topic(ros_instance, f'/{self.robot_name}/cmd_lightring', 'irobot_create_msgs/LightVector'),
+                    Topic(ros_instance, f'/{self.robot_name}/cmd_audio', 'irobot_create_msgs/AudioNoteVector'),
                   ]
 
         # create a callback for sending messages to the network
@@ -338,7 +374,9 @@ class WebSocketProtocol(WebSocketServerProtocol):
 
 class RosSimulator:
     def __init__(self, robot_name, host = None, port = None):
+        pygame.mixer.pre_init(44100, -16, 2)
         pygame.init()
+        
         self.screen = pygame.display.set_mode((1000, 1000))
         self.clock = pygame.time.Clock()
         self.running = True
