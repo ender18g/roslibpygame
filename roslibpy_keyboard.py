@@ -127,7 +127,7 @@ while running:
 
     if lightflag:
         cmd_lightring_pub.publish(message_light)
-        lightflag = False
+        #lightflag = False
 
     # Refresh the display
     screen.fill((0, 0, 0))  # Black background

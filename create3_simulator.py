@@ -75,6 +75,10 @@ Usage:
         self.audio_topic = Topic(ros_instance, f'/{name}/cmd_audio', 'irobot_create_msgs/AudioNoteVector')
         self.audio_topic.msg = None
 
+        # callback to set lights
+        self.light_topic.subscribe(self.set_lights)
+        print(self.light_topic.callbacks)
+
     def update(self):
         # Update velocities from cmd_vel topic
 
@@ -104,8 +108,6 @@ Usage:
         self.ir_measurements = self.measure_IR(self.x, self.y)
         self.rect.center = self.get_pixel_position()
         self.image = self.og_image
-        # draw the light ring
-        self.set_lights()
 
         # play audio if message comes through
         if self.audio_topic.msg is not None:
@@ -157,22 +159,20 @@ Usage:
         self.light_ring_rect.centerx = 50
         self.light_ring_rect.centery = 100
 
-    def set_lights(self):
+    def set_lights(self,msg):
         '''
         "{override_system: true, leds: [{red: 255, green: 0, blue: 0}, {red: 0, green: 255, blue: 0}, {red: 0, green: 0, blue: 255}, {red: 255, green: 255, blue: 0}, {red: 255, green: 0, blue: 255}, {red: 0, green: 255, blue: 255}]}"
         '''
+        print('Setting lights')
         # get the led msg
-        led_msg = self.light_topic.msg
+        led_msg = msg.get('msg', None)
         if not led_msg:
             # no message, LIGHTS OFF
             self.light_vector = []
             return
         else:
             # set the light vector
-            self.light_vector = led_msg['leds']  
-
-        # make the light ring
-        self.draw_light_ring()      
+            self.light_vector = led_msg['leds']    
   
     def check_collision(self,x_m, y_m):
         x, y = self.get_pixel_position(x_m, y_m) # convert meters to pixels
@@ -312,6 +312,7 @@ class Topic:
     def __new__(cls, ros_instance, topic_name, message_type=''):
         # check if the topic already exists and return it!
         if topic_name in ros_instance.topic_dict:
+            print('returning existing topic')
             return ros_instance.topic_dict[topic_name]
         else:
             # otherwise create a new topic
@@ -336,6 +337,11 @@ class Topic:
         # update the time
         self.last_msg_time = pygame.time.get_ticks()
 
+        print(self.callbacks)
+
+        # run all callbacks
+        [callback(message) for callback in self.callbacks]
+
         # check to see if the message rate is too high
         msg_rate = 1000 / (pygame.time.get_ticks() - self.last_msg_time)
         if msg_rate > self.max_message_rate:
@@ -356,16 +362,6 @@ class WebSocketProtocol(WebSocketServerProtocol):
         self.ros = ros_instance
 
         self.robot_name = ros_instance.robot_name
-
-        # create all topics in a list
-        # self.topics = [
-        #             Topic(ros_instance, f'/{self.robot_name}/cmd_vel', 'geometry_msgs/Twist'),
-        #             Topic(ros_instance, f'/{self.robot_name}/cmd_lightring', 'irobot_create_msgs/LightVector')
-        #           ]
-
-        self.topics = set() # this is a set to prevent duplicatesw
-        self.ros.broadcast_payload = lambda payload: self.broadcast_message(payload)
-
 
     # if we get a connection, set the ros instance to connected
     def onConnect(self, request):
@@ -388,6 +384,7 @@ class WebSocketProtocol(WebSocketServerProtocol):
                 message = json.loads(payload.decode('utf8'))
                 # get the topic
                 t = Topic(self.ros, message.get('topic', ''))
+                print(t.callbacks)
                 t.publish(message.get('msg'))
                 print(f"Received message on topic {t.topic_name}")
   
