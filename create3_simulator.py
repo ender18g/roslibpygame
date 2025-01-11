@@ -78,6 +78,7 @@ Usage:
         # callback to set lights
         self.light_topic.subscribe(self.set_lights)
         print(self.light_topic.callbacks)
+        print(id(self.light_topic))
 
     def update(self):
         # Update velocities from cmd_vel topic
@@ -387,6 +388,7 @@ class WebSocketProtocol(WebSocketServerProtocol):
                 print(t.callbacks)
                 t.publish(message.get('msg'))
                 print(f"Received message on topic {t.topic_name}")
+                print(id(t))
   
             except:
                 pass
