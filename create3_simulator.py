@@ -108,7 +108,6 @@ Usage:
         self.set_lights()
 
         # play audio if message comes through
-        print(self.audio_topic.msg)
         if self.audio_topic.msg is not None:
             threading.Thread(target=self.play_audio, args=(self.audio_topic.msg['notes'][0]['note'],self.audio_topic.msg['notes'][0]['duration']), daemon=True).start()
             self.audio_topic.msg = None
@@ -364,9 +363,7 @@ class WebSocketProtocol(WebSocketServerProtocol):
         #             Topic(ros_instance, f'/{self.robot_name}/cmd_lightring', 'irobot_create_msgs/LightVector')
         #           ]
 
-        self.topics = set() # this is a set to prevent duplicates
-
-        # create a callback for sending messages to the network
+        self.topics = set() # this is a set to prevent duplicatesw
         self.ros.broadcast_payload = lambda payload: self.broadcast_message(payload)
 
 
@@ -382,7 +379,8 @@ class WebSocketProtocol(WebSocketServerProtocol):
             self.sendMessage(json.dumps(payload).encode('utf8'))
         except:
             self.ros.is_connected = False
-            print('No Websocket Connection!' , end='\r')        
+            print('No Websocket Connection!' , end='\r') 
+            self.ros.set_alert('No Websocket Connection!')       
 
     def onMessage(self, payload, isBinary):
         if not isBinary:
@@ -400,6 +398,8 @@ class RosSimulator:
     def __init__(self, robot_name, host = None, port = None):
         pygame.mixer.pre_init(44100, -16, 2)
         pygame.init()
+        self.version = '1.00'
+        self.alert_msg = 'Not Connected'
         self.screen = pygame.display.set_mode((1000, 1000))
         self.clock = pygame.time.Clock()
         self.running = True
