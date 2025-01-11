@@ -78,9 +78,15 @@ Usage:
     def update(self):
         # Update velocities from cmd_vel topic
 
-        if self.cmd_vel_topic.msg:
+        if self.cmd_vel_topic.msg and not self.cmd_vel_topic.has_timed_out():
+            # we have a message and it is not timed out
             self.v = self.cmd_vel_topic.msg['linear']['x']
             self.theta_dot = self.cmd_vel_topic.msg['angular']['z']
+        
+        else:
+            # no message or timed out
+            self.v = 0
+            self.theta_dot = 0
 
         # Calculate new position in METERS with TIME_STEP
         new_x = self.x + self.v * cos(self.theta) * self.dt 
@@ -304,7 +310,7 @@ Usage:
 
 
 class Topic:
-    def __new__(cls, ros_instance, topic_name, message_type):
+    def __new__(cls, ros_instance, topic_name, message_type=''):
         # check if the topic already exists and return it!
         if topic_name in ros_instance.topic_dict:
             return ros_instance.topic_dict[topic_name]
@@ -313,7 +319,7 @@ class Topic:
             return super(Topic, cls).__new__(cls)
 
 
-    def __init__(self, ros_instance, topic_name, message_type):
+    def __init__(self, ros_instance, topic_name, message_type='', timeout=1):
         self.ros = ros_instance
         self.topic_name = topic_name
         self.message_type = message_type
@@ -321,9 +327,25 @@ class Topic:
         self.ros.add_topic(self)
         self.callbacks = []
         self.msg = None
+        self.timeout = 1000 # in ms
+        self.last_msg_time = 0
+        self.max_message_rate = 20 # in Hz
 
     def publish(self, message):
         self.msg = message
+
+        # update the time
+        self.last_msg_time = pygame.time.get_ticks()
+
+        # check to see if the message rate is too high
+        msg_rate = 1000 / (pygame.time.get_ticks() - self.last_msg_time)
+        if msg_rate > self.max_message_rate:
+            print(f"Message rate too high for {self.topic_name}: {msg_rate:.2f} Hz")
+            self.ros.set_alert(f"Message rate too high for {self.topic_name}: {msg_rate:.2f} Hz")
+    
+    def has_timed_out(self):
+        # returns True if the topic has timed out
+        return pygame.time.get_ticks() - self.last_msg_time > self.timeout
 
     def subscribe(self, callback):
         # add the callback to the topic
@@ -337,19 +359,22 @@ class WebSocketProtocol(WebSocketServerProtocol):
         self.robot_name = ros_instance.robot_name
 
         # create all topics in a list
-        self.topics = [
-                    Topic(ros_instance, f'/{self.robot_name}/cmd_vel', 'geometry_msgs/Twist'),
-                    Topic(ros_instance, f'/{self.robot_name}/cmd_lightring', 'irobot_create_msgs/LightVector'),
-                    Topic(ros_instance, f'/{self.robot_name}/cmd_audio', 'irobot_create_msgs/AudioNoteVector'),
-                  ]
+        # self.topics = [
+        #             Topic(ros_instance, f'/{self.robot_name}/cmd_vel', 'geometry_msgs/Twist'),
+        #             Topic(ros_instance, f'/{self.robot_name}/cmd_lightring', 'irobot_create_msgs/LightVector')
+        #           ]
+
+        self.topics = set() # this is a set to prevent duplicates
 
         # create a callback for sending messages to the network
         self.ros.broadcast_payload = lambda payload: self.broadcast_message(payload)
 
-    
+
     # if we get a connection, set the ros instance to connected
     def onConnect(self, request):
         self.ros.is_connected = True
+        # clear alert message if connected
+        self.ros.set_alert('')
         print(f'Connected to {request.peer}')
 
     def broadcast_message(self, payload):
@@ -363,20 +388,18 @@ class WebSocketProtocol(WebSocketServerProtocol):
         if not isBinary:
             try:
                 message = json.loads(payload.decode('utf8'))
-                for t in self.topics:
-                    # check if the topic is in the message and publish it
-                    if t.topic_name == message.get('topic'):
-                        print(f"Received message for {t.topic_name}")
-                        t.publish(message.get('msg'))
+                # get the topic
+                t = Topic(self.ros, message.get('topic', ''))
+                t.publish(message.get('msg'))
+                print(f"Received message on topic {t.topic_name}")
   
             except:
-                print("Invalid JSON received")
+                pass
 
 class RosSimulator:
     def __init__(self, robot_name, host = None, port = None):
         pygame.mixer.pre_init(44100, -16, 2)
         pygame.init()
-        
         self.screen = pygame.display.set_mode((1000, 1000))
         self.clock = pygame.time.Clock()
         self.running = True
@@ -433,6 +456,9 @@ class RosSimulator:
 
 
         return background
+    
+    def set_alert(self, msg):
+        self.alert_msg = msg
 
     def run_once(self):
         # Non-blocking loop to run game continuously!
@@ -451,8 +477,14 @@ class RosSimulator:
         # put fps in top left corner
         fps = self.clock.get_fps()
         font = pygame.font.Font(None, 24)
-        text = font.render(f'FPS: {fps:.2f}', True, self.colors.get('green', (0, 0, 255)))
+        text = font.render(f'v{self.version} FPS: {fps:.2f}', True, self.colors.get('green', (0, 0, 255)))
         self.screen.blit(text, (10, 10))
+
+        # if alert message, put it below fps
+        if self.alert_msg:
+            text = font.render(self.alert_msg, True, self.colors.get('red', (255, 0, 0)))
+            self.screen.blit(text, (10, 40))
+
 
         # if 'p' pressed, take a screenshot
         keys = pygame.key.get_pressed()

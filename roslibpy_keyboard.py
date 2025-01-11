@@ -135,7 +135,6 @@ while running:
     
     time.sleep(0.1) # slow to 10Hz to avoid flooding the network
 
-
 # Clean up and close the Pygame window and ROS connection
 pygame.quit()
 ros_node.terminate()
