@@ -155,7 +155,7 @@ Usage:
 
         # blit the light ring to the screen
         self.light_ring_rect.centerx = 50
-        self.light_ring_rect.centery = 70
+        self.light_ring_rect.centery = 100
 
     def set_lights(self):
         '''
