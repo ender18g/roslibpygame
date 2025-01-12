@@ -7,6 +7,7 @@ from twisted.internet import reactor, task
 import random
 import numpy
 import threading
+import time
 
 
 
@@ -326,7 +327,7 @@ class Topic:
         self.ros.add_topic(self)
         self.callbacks = []
         self.msg = None
-        self.timeout = 1000 # in ms
+        self.timeout = 1e9 * timeout # in nanoseconds
         self.last_msg_time = 0
         self.max_message_rate = 20 # in Hz
         self.avg_message_rate = 0
@@ -336,23 +337,22 @@ class Topic:
 
         # update the time
         self.last_msg_time = pygame.time.get_ticks()
-
         # run all callbacks
         [callback(message) for callback in self.callbacks]
 
         # check to see if the message rate is too high
-        msg_rate = 1000 / (pygame.time.get_ticks() - self.last_msg_time)
+        delta_t = pygame.time.get_ticks() - self.last_msg_time
+        print(f'delta_t: {delta_t}')
 
-        # add the message rate to the average
-        self.avg_message_rate = 0.99 * self.avg_message_rate + 0.01 * msg_rate
+        msg_rate = 1000 / delta_t
 
         if msg_rate > self.max_message_rate:
             print(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
             self.ros.set_alert(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
-            
+
     def has_timed_out(self):
         # returns True if the topic has timed out
-        return pygame.time.get_ticks() - self.last_msg_time > self.timeout
+        return time.monotonic() - self.last_msg_time > self.timeout
 
     def subscribe(self, callback):
         # add the callback to the topic
