@@ -330,10 +330,12 @@ class Topic:
         self.clock = pygame.time.Clock()
         self.clock.tick()
         self.max_message_rate = 20 # in Hz
-        self.avg_message_rate = -100 # dont ask why 
+        self.avg_message_rate = 0
+        self.msg_count = 0
 
     def publish(self, message):
         self.msg = message
+        self.msg_count += 1
 
         # update the time
         self.clock.tick()
@@ -342,9 +344,13 @@ class Topic:
 
         # check to see if the message rate is too high
         delta_t = self.clock.get_time()
-        msg_rate = 1000 / delta_t
+        if self.msg_count > 10:
+            msg_rate = 1000 / delta_t
+        else :
+            msg_rate = 0
+            self.first_message = False
 
-        self.avg_message_rate = 19/20 * self.avg_message_rate + 1/20* msg_rate
+        self.avg_message_rate = 0.9 * self.avg_message_rate + 0.1* msg_rate
 
         print(f"Message rate for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
 
