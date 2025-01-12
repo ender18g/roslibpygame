@@ -163,7 +163,6 @@ Usage:
         '''
         "{override_system: true, leds: [{red: 255, green: 0, blue: 0}, {red: 0, green: 255, blue: 0}, {red: 0, green: 0, blue: 255}, {red: 255, green: 255, blue: 0}, {red: 255, green: 0, blue: 255}, {red: 0, green: 255, blue: 255}]}"
         '''
-        print('setting lights')
         led_msg = msg.get('leds', None)
         # get the led msg
         if not led_msg:
@@ -327,32 +326,35 @@ class Topic:
         self.ros.add_topic(self)
         self.callbacks = []
         self.msg = None
-        self.timeout = 1e9 * timeout # in nanoseconds
-        self.last_msg_time = 0
+        self.timeout = 1000 * timeout # in milliseconds
+        self.clock = pygame.time.Clock()
+        self.clock.tick()
         self.max_message_rate = 20 # in Hz
-        self.avg_message_rate = 0
+        self.avg_message_rate = -100 # dont ask why 
 
     def publish(self, message):
         self.msg = message
 
         # update the time
-        self.last_msg_time = pygame.time.get_ticks()
+        self.clock.tick()
         # run all callbacks
         [callback(message) for callback in self.callbacks]
 
         # check to see if the message rate is too high
-        delta_t = pygame.time.get_ticks() - self.last_msg_time
-        print(f'delta_t: {delta_t}')
-
+        delta_t = self.clock.get_time()
         msg_rate = 1000 / delta_t
 
-        if msg_rate > self.max_message_rate:
+        self.avg_message_rate = 19/20 * self.avg_message_rate + 1/20* msg_rate
+
+        print(f"Message rate for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
+
+        if self.avg_message_rate > self.max_message_rate:
             print(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
             self.ros.set_alert(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
 
     def has_timed_out(self):
         # returns True if the topic has timed out
-        return time.monotonic() - self.last_msg_time > self.timeout
+        return self.clock.get_time() > self.timeout
 
     def subscribe(self, callback):
         # add the callback to the topic

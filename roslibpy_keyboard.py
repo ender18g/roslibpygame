@@ -8,6 +8,8 @@ import random
 # Initialize Pygame
 pygame.init()
 
+clock = pygame.time.Clock()
+
 # Set up the Pygame window
 screen = pygame.display.set_mode((400, 300))
 pygame.display.set_caption("Control Create3 Robot")
@@ -132,9 +134,9 @@ while running:
     # Refresh the display
     screen.fill((0, 0, 0))  # Black background
     pygame.display.flip()
-    
-    time.sleep(0.4) # slow to 10Hz to avoid flooding the network
 
+    # make it run at 10Hz
+    clock.tick(10)
 # Clean up and close the Pygame window and ROS connection
 pygame.quit()
 ros_node.terminate()
