@@ -32,7 +32,7 @@ Usage:
         print(f'Creating robot {name}')
         # check if ./create3.png exists
         load_image = os.path.exists('./create3.png')
-        load_image = 0
+        load_image = 1
 
         if load_image:
             self.image = pygame.image.load('./create3.png').convert_alpha()
