@@ -8,6 +8,7 @@ import random
 import numpy
 import threading
 import time
+import os
 
 
 
@@ -28,12 +29,22 @@ Usage:
     def __init__(self, screen, ros_instance, name='juliet'):
         super().__init__()
         
-        
         print(f'Creating robot {name}')
-        
-        self.image = pygame.image.load('./assets/images/create3.png').convert_alpha()
-        self.image = pygame.transform.rotate(self.image, -90)
-        self.image = pygame.transform.smoothscale(self.image, (self.image.get_width() // 5, self.image.get_height() // 5))
+        # check if ./create3.png exists
+        load_image = os.path.exists('./create3.png')
+        load_image = 0
+
+        if load_image:
+            self.image = pygame.image.load('./create3.png').convert_alpha()
+            self.image = pygame.transform.rotate(self.image, -90)
+            self.image = pygame.transform.smoothscale(self.image, (self.image.get_width() // 5, self.image.get_height() // 5))
+        else:
+            # make a circle
+            r = 30
+            self.image = pygame.Surface((r*2, r*2), pygame.SRCALPHA)
+            pygame.draw.circle(self.image, (0,0,0), (r, r), r)
+            # draw a smaller circle for the center
+            pygame.draw.circle(self.image, (150,150,150), (r, r), r-5)
 
         self.radius = self.image.get_width() // 2 -10# radius of robot in pixels
         self.radius_points = []
