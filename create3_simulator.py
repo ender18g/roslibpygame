@@ -367,7 +367,7 @@ class Topic:
 
         if self.avg_message_rate > self.max_message_rate:
             print(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
-            self.ros.set_alert(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
+            #self.ros.set_alert(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
 
     def has_timed_out(self):
         # returns True if the topic has timed out
