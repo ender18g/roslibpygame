@@ -317,7 +317,6 @@ Usage:
         #play once, zero repeats
         sound.play(loops = 0)
 
-
 class Topic:
     def __new__(cls, ros_instance, topic_name, message_type=''):
         # check if the topic already exists and return it!
@@ -521,7 +520,6 @@ class RosSimulator:
             pygame.quit()
             reactor.stop()
 
-
 def main():
 
     ip = '0.0.0.0'
@@ -542,8 +540,6 @@ def main():
 
     print(f"Simulated Robot: {robot_name} on ws://{ip}:{port}")
     reactor.run()
-
-
 
 if __name__ == "__main__":
     main()
