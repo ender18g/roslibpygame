@@ -23,9 +23,9 @@ led_pubs = [roslibpy.Topic(ros_node, f'/{names}/cmd_lightring', 'irobot_create_m
 note_pubs = [roslibpy.Topic(ros_node, f'/{names}/cmd_audio', 'irobot_create_msgs/AudioNoteVector') for names in robot_names]
 
 # compose an LightringLeds message
-led_colors = [{'red': 255, 'green': 255, 'blue': 255}, 
-              {'red': 255, 'green': 255, 'blue': 255},
-              {'red': 255, 'green': 255, 'blue': 255},
+led_colors = [{'red': 255, 'green': 0, 'blue': 255}, 
+              {'red': 255, 'green': 0, 'blue': 255},
+              {'red': 255, 'green': 0, 'blue': 255},
               {'red': 255, 'green': 255, 'blue': 255},
               {'red': 255, 'green': 255, 'blue': 255},
               {'red': 255, 'green': 255, 'blue': 255}]
