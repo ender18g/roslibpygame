@@ -22,6 +22,14 @@ robot_names = ['juliet', 'echo', 'bravo', 'india', 'foxtrot', 'omega']
 led_pubs = [roslibpy.Topic(ros_node, f'/{names}/cmd_lightring', 'irobot_create_msgs/LightringLeds') for names in robot_names]
 note_pubs = [roslibpy.Topic(ros_node, f'/{names}/cmd_audio', 'irobot_create_msgs/AudioNoteVector') for names in robot_names]
 
+#batt_topic = [roslibpy.Topic(ros_node, f'/{names}}/battery_state', 'sensor_msgs/BatteryState') for names in robot_names]  
+
+
+
+#def callback_battery(msg):
+#      print(msg)
+
+
 # compose an LightringLeds message
 led_colors = [{'red': 255, 'green': 0, 'blue': 255}, 
               {'red': 255, 'green': 0, 'blue': 255},
@@ -56,7 +64,7 @@ for t in range(0,len(robot_names)):
     note_pubs[t].publish(audio_msg)
     print(robot_names[count])
     count +=1
-    time.sleep(2)
+    time.sleep(4)
 
 
 

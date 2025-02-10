@@ -252,12 +252,12 @@ Usage:
     def publish_odom(self):
         msg = {
                 'pose': {
-                    'position': {'x': self.x, 'y': self.y, 'z': 0},
-                    'orientation': {'x': 0, 'y': 0, 'z': sin(self.theta/2), 'w': cos(self.theta/2)}
+                    'pose': {'position': {'x': self.x, 'y': self.y, 'z': 0}, 'orientation': {'x': 0, 'y': 0, 'z': sin(self.theta/2), 'w': cos(self.theta/2)}},
+                    'covariance': numpy.zeros((36,1)).tolist()
                 },
                 'twist': {
-                    'linear': {'x': self.v, 'y': 0, 'z': 0},
-                    'angular': {'x': 0, 'y': 0, 'z': self.theta_dot}
+                    'twist': {'linear': {'x': self.v, 'y': 0, 'z': 0},'angular': {'x': 0, 'y': 0, 'z': self.theta_dot}},
+                    'covariance': numpy.zeros((36,1)).tolist()
                 }
             }
         
