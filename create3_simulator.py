@@ -59,7 +59,7 @@ Usage:
         self.screen = screen
 
         # Robot state
-        self.pixel_per_meter = 250
+        self.pixel_per_meter = 150
         self.theta = 0 # in radians
         self.theta_dot = 0 # in radians per second
         self.x, self.y = (0,0)
@@ -174,7 +174,6 @@ Usage:
         '''
         "{override_system: true, leds: [{red: 255, green: 0, blue: 0}, {red: 0, green: 255, blue: 0}, {red: 0, green: 0, blue: 255}, {red: 255, green: 255, blue: 0}, {red: 255, green: 0, blue: 255}, {red: 0, green: 255, blue: 255}]}"
         '''
-        print('Setting lights')
         led_msg = msg.get('leds', None)
         # get the led msg
         if not led_msg:
