@@ -420,7 +420,7 @@ class RosSimulator:
     def __init__(self, robot_name, host = None, port = None):
         pygame.mixer.pre_init(44100, -16, 2)
         pygame.init()
-        self.version = '1.00'
+        self.version = '1.01'
         self.alert_msg = 'Not Connected'
         self.screen = pygame.display.set_mode((1000, 1000))
         self.clock = pygame.time.Clock()
