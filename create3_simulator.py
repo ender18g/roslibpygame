@@ -174,6 +174,7 @@ Usage:
         '''
         "{override_system: true, leds: [{red: 255, green: 0, blue: 0}, {red: 0, green: 255, blue: 0}, {red: 0, green: 0, blue: 255}, {red: 255, green: 255, blue: 0}, {red: 255, green: 0, blue: 255}, {red: 0, green: 255, blue: 255}]}"
         '''
+        print('Setting lights')
         led_msg = msg.get('leds', None)
         # get the led msg
         if not led_msg:
@@ -347,6 +348,8 @@ class Topic:
         self.msg = message
         self.msg_count += 1
 
+        #print(f"Messsage published to {self.topic_name}: {message}")
+
         # update the time
         self.clock.tick()
         # run all callbacks
@@ -362,7 +365,7 @@ class Topic:
 
         self.avg_message_rate = 0.9 * self.avg_message_rate + 0.1* msg_rate
 
-        print(f"Message rate for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
+       #print(f"Message rate for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
 
         if self.avg_message_rate > self.max_message_rate:
             print(f"Message rate too high for {self.topic_name}: {self.avg_message_rate:.2f} Hz")
@@ -388,10 +391,13 @@ class WebSocketProtocol(WebSocketServerProtocol):
         self.ros.is_connected = True
         # clear alert message if connected
         self.ros.set_alert('')
-        print(f'Connected to {request.peer}')
+        print(f'CONNECTED to {request.peer}')
+        # add the broadcast payload to the ros instance
+        self.ros.broadcast_payload = lambda msg: self.broadcast_message(msg)
 
     def broadcast_message(self, payload):
         try:
+            #print(f'Broadcasting: {payload}')
             self.sendMessage(json.dumps(payload).encode('utf8'))
         except:
             self.ros.is_connected = False
