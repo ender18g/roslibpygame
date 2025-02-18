@@ -246,8 +246,11 @@ Usage:
             endpoint = (fpx + ray_dx * distance, fpy + ray_dy * distance)
             pygame.draw.line(self.screen, self.ros.colors.get('red'), (fpx, fpy), endpoint, 1)
 
-            # TODO: add scaling to range to represent real IR numbers
-        return [ r/max_pixel_range * 255 for r in ranges]
+            
+        #return [ r/max_pixel_range * 255 for r in ranges]
+        #print(ranges)
+        #print([ (max_pixel_range+1)/(r+1) - 1 for r in ranges])
+        return [ 71.4*((max_pixel_range+1)/(r+1) - 1) for r in ranges]
 
     def publish_odom(self):
         msg = {
